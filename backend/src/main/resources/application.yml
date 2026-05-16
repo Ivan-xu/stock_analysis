@@ -1,22 +1,50 @@
 spring:
   application:
     name: stock-analysis-mvp
-  
+
+  profiles:
+    active: dev
+
   datasource:
+    driver-class-name: org.h2.Driver
     url: jdbc:h2:mem:stockdb
-    driverClassName: org.h2.Driver
     username: sa
-    password: 
-  
+    password:
+
   h2:
     console:
       enabled: true
       path: /h2-console
-  
+
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: false
+    database-platform: org.hibernate.dialect.H2Dialect
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 6000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
 
 server:
   port: 8080
+
+akshare:
+  base-url: http://localhost:5001
+  connect-timeout: 10000
+  read-timeout: 30000
+
+logging:
+  level:
+    com.stock.analysis: INFO
+    com.stock.analysis.service.market: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

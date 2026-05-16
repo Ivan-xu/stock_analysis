@@ -73,9 +73,39 @@
               style="margin-bottom: 20px;"
             />
             
-            <el-row :gutter="20">
+            <el-row :gutter="20" style="margin-bottom: 20px;">
               <el-col :span="8">
                 <el-card>
+                  <template #header>
+                    <span>📊 实时行情</span>
+                  </template>
+                  <div v-if="result.researcher.realTimeQuote">
+                    <div style="font-size: 24px; font-weight: bold; color: #409EFF;">
+                      ¥{{ result.researcher.realTimeQuote.currentPrice?.toFixed(2) }}
+                    </div>
+                    <div style="margin-top: 5px;" :style="{ color: result.researcher.realTimeQuote.changePercent >= 0 ? '#F56C6C' : '#67C23A' }">
+                      {{ result.researcher.realTimeQuote.changeAmount >= 0 ? '+' : '' }}{{ result.researcher.realTimeQuote.changeAmount?.toFixed(2) }}
+                      ({{ result.researcher.realTimeQuote.changePercent >= 0 ? '+' : '' }}{{ result.researcher.realTimeQuote.changePercent?.toFixed(2) }}%)
+                    </div>
+                    <el-divider style="margin: 10px 0;" />
+                    <div style="font-size: 12px; color: #666;">
+                      <div>今开: {{ result.researcher.realTimeQuote.openPrice?.toFixed(2) }}</div>
+                      <div>最高: {{ result.researcher.realTimeQuote.highPrice?.toFixed(2) }}</div>
+                      <div>最低: {{ result.researcher.realTimeQuote.lowPrice?.toFixed(2) }}</div>
+                      <div>成交量: {{ formatVolume(result.researcher.realTimeQuote.volume) }}</div>
+                    </div>
+                  </div>
+                  <div v-else style="text-align: center; color: #999;">
+                    暂无实时行情
+                  </div>
+                </el-card>
+              </el-col>
+              
+              <el-col :span="8">
+                <el-card>
+                  <template #header>
+                    <span>💰 投资建议</span>
+                  </template>
                   <div style="text-align: center;">
                     <div style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">
                       {{ result.investment.recommendation }}
@@ -92,8 +122,10 @@
               
               <el-col :span="8">
                 <el-card>
-                  <h4>技术分析</h4>
-                  <div style="margin-top: 10px;">
+                  <template #header>
+                    <span>🎯 技术指标</span>
+                  </template>
+                  <div>
                     <div>建议：{{ result.techAnalyst.recommendation }}</div>
                     <div style="margin-top: 5px;">
                       RSI：<span :style="{ color: getRSIColor(result.techAnalyst.rsi.rsi) }">{{ result.techAnalyst.rsi.rsi?.toFixed(2) }}</span>
@@ -104,7 +136,9 @@
                   </div>
                 </el-card>
               </el-col>
-              
+            </el-row>
+            
+            <el-row :gutter="20">
               <el-col :span="8">
                 <el-card>
                   <h4>舆情分析</h4>
@@ -272,6 +306,16 @@ const getRSIColor = (rsi) => {
   if (rsi > 70) return '#F56C6C'
   if (rsi < 30) return '#67C23A'
   return '#E6A23C'
+}
+
+const formatVolume = (volume) => {
+  if (!volume) return '0'
+  if (volume >= 100000000) {
+    return (volume / 100000000).toFixed(2) + '亿'
+  } else if (volume >= 10000) {
+    return (volume / 10000).toFixed(2) + '万'
+  }
+  return volume.toString()
 }
 
 onMounted(() => {
