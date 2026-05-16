@@ -43,6 +43,10 @@ akshare:
   connect-timeout: 10000
   read-timeout: 30000
 
+zhipuai:
+  api-key: ${ZHIPUAI_API_KEY:}
+  timeout: 30000
+
 logging:
   level:
     com.stock.analysis: INFO

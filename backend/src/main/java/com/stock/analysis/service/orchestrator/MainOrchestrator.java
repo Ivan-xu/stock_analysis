@@ -47,7 +47,7 @@ public class MainOrchestrator {
                 Thread.sleep(500);
                 
                 sendProgress(emitter, 4, "投资经理Agent决策中...", 80);
-                InvestmentResult investment = investmentManagerAgent.decide(tech, sentiment);
+                InvestmentResult investment = investmentManagerAgent.decide(tech, sentiment, research);
                 Thread.sleep(500);
                 
                 AnalysisResult result = AnalysisResult.builder()
@@ -76,7 +76,7 @@ public class MainOrchestrator {
             ResearcherResult research = researcherAgent.analyze(stockCode);
             TechResult tech = techAnalystAgent.analyze(research);
             SentimentResult sentiment = sentimentAgent.analyze(stockCode);
-            InvestmentResult investment = investmentManagerAgent.decide(tech, sentiment);
+            InvestmentResult investment = investmentManagerAgent.decide(tech, sentiment, research);
             
             return AnalysisResult.builder()
                 .stockCode(stockCode)

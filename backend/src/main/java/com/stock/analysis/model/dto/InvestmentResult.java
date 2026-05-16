@@ -14,4 +14,6 @@ public class InvestmentResult {
     private String riskLevel;
     private String targetPrice;
     private String reason;
+    private Boolean aiGenerated;
+    private Double confidence;
 }
