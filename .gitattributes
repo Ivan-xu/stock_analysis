@@ -1,0 +1,30 @@
+# Autodetect text files and normalize line endings
+* text=auto
+
+# Java
+*.java text
+
+# JavaScript / Vue
+*.js text
+*.vue text
+*.css text
+*.html text
+
+# Configuration
+*.xml text
+*.yml text
+*.yaml text
+*.json text
+*.md text
+*.sh text
+
+# Binary files
+*.png binary
+*.jpg binary
+*.gif binary
+*.pdf binary
+*.jar binary
+*.class binary
+
+# Line endings
+*.sh text eol=lf
