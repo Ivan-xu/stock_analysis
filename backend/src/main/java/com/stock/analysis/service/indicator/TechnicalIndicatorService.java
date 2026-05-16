@@ -1,14 +1,12 @@
 package com.stock.analysis.service.indicator;
 
-import com.stock.analysis.model.dto.KLine;
+import com.stock.analysis.model.dto.KLineDTO;
 import com.stock.analysis.model.dto.MACDResult;
 import com.stock.analysis.model.dto.RSIResult;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * 技术指标计算服务
@@ -19,11 +17,10 @@ public class TechnicalIndicatorService {
     /**
      * 计算MACD
      */
-    public MACDResult calculateMACD(List<KLine> kLines) {
+    public MACDResult calculateMACD(List<KLineDTO> kLines) {
         List<Double> closePrices = kLines.stream()
-            .map(KLine::getClose)
-            .map(BigDecimal::doubleValue)
-            .collect(Collectors.toList());
+            .map(KLineDTO::getClose)
+            .toList();
         
         List<Double> ema12 = calculateEMA(closePrices, 12);
         List<Double> ema26 = calculateEMA(closePrices, 26);
@@ -43,11 +40,10 @@ public class TechnicalIndicatorService {
     /**
      * 计算RSI
      */
-    public RSIResult calculateRSI(List<KLine> kLines, int period) {
+    public RSIResult calculateRSI(List<KLineDTO> kLines, int period) {
         List<Double> closePrices = kLines.stream()
-            .map(KLine::getClose)
-            .map(BigDecimal::doubleValue)
-            .collect(Collectors.toList());
+            .map(KLineDTO::getClose)
+            .toList();
         
         List<Double> gains = new ArrayList<>();
         List<Double> losses = new ArrayList<>();

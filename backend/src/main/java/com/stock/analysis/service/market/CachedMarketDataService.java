@@ -6,6 +6,7 @@ import com.stock.analysis.model.dto.KLineDTO;
 import com.stock.analysis.model.dto.RealTimeQuoteDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -26,30 +27,36 @@ public class CachedMarketDataService implements MarketDataService {
     @Autowired
     private AKShareMarketDataService akshareService;
 
-    @Autowired
+    @Autowired(required = false)
     private RedisTemplate<String, Object> redisTemplate;
 
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Value("${spring.data.redis.enabled:true}")
+    private boolean redisEnabled;
+
     @Override
     public List<KLineDTO> getHistoricalKLine(String stockCode, LocalDate startDate, LocalDate endDate) {
-        String cacheKey = KLINES_KEY_PREFIX + stockCode + ":" + startDate + ":" + endDate;
+        if (redisEnabled && redisTemplate != null) {
+            String cacheKey = KLINES_KEY_PREFIX + stockCode + ":" + startDate + ":" + endDate;
 
-        try {
-            Object cached = redisTemplate.opsForValue().get(cacheKey);
-            if (cached != null) {
-                log.info("Cache hit for K-lines: {}", stockCode);
-                return convertToKLines(cached);
+            try {
+                Object cached = redisTemplate.opsForValue().get(cacheKey);
+                if (cached != null) {
+                    log.info("Cache hit for K-lines: {}", stockCode);
+                    return convertToKLines(cached);
+                }
+            } catch (Exception e) {
+                log.warn("Failed to read K-lines from cache: {}", e.getMessage());
             }
-        } catch (Exception e) {
-            log.warn("Failed to read K-lines from cache: {}", e.getMessage());
         }
 
         log.info("Fetching K-lines from AKShare for {}", stockCode);
         List<KLineDTO> kLines = akshareService.getHistoricalKLine(stockCode, startDate, endDate);
 
-        if (!kLines.isEmpty()) {
+        if (redisEnabled && redisTemplate != null && !kLines.isEmpty()) {
+            String cacheKey = KLINES_KEY_PREFIX + stockCode + ":" + startDate + ":" + endDate;
             try {
                 redisTemplate.opsForValue().set(cacheKey, kLines, KLINES_CACHE_TTL, TimeUnit.SECONDS);
                 log.info("Cached K-lines for {}: {} records", stockCode, kLines.size());
@@ -63,29 +70,34 @@ public class CachedMarketDataService implements MarketDataService {
 
     @Override
     public Optional<RealTimeQuoteDTO> getRealTimeQuote(String stockCode) {
-        String cacheKey = QUOTE_KEY_PREFIX + stockCode;
+        if (redisEnabled && redisTemplate != null) {
+            String cacheKey = QUOTE_KEY_PREFIX + stockCode;
 
-        try {
-            Object cached = redisTemplate.opsForValue().get(cacheKey);
-            if (cached != null) {
-                log.debug("Cache hit for quote: {}", stockCode);
-                return Optional.of(convertToQuote(cached));
+            try {
+                Object cached = redisTemplate.opsForValue().get(cacheKey);
+                if (cached != null) {
+                    log.debug("Cache hit for quote: {}", stockCode);
+                    return Optional.of(convertToQuote(cached));
+                }
+            } catch (Exception e) {
+                log.warn("Failed to read quote from cache: {}", e.getMessage());
             }
-        } catch (Exception e) {
-            log.warn("Failed to read quote from cache: {}", e.getMessage());
         }
 
         log.info("Fetching quote from AKShare for {}", stockCode);
         Optional<RealTimeQuoteDTO> quote = akshareService.getRealTimeQuote(stockCode);
 
-        quote.ifPresent(q -> {
-            try {
-                redisTemplate.opsForValue().set(cacheKey, q, QUOTE_CACHE_TTL, TimeUnit.SECONDS);
-                log.debug("Cached quote for {}", stockCode);
-            } catch (Exception e) {
-                log.warn("Failed to cache quote: {}", e.getMessage());
-            }
-        });
+        if (redisEnabled && redisTemplate != null) {
+            String cacheKey = QUOTE_KEY_PREFIX + stockCode;
+            quote.ifPresent(q -> {
+                try {
+                    redisTemplate.opsForValue().set(cacheKey, q, QUOTE_CACHE_TTL, TimeUnit.SECONDS);
+                    log.debug("Cached quote for {}", stockCode);
+                } catch (Exception e) {
+                    log.warn("Failed to cache quote: {}", e.getMessage());
+                }
+            });
+        }
 
         return quote;
     }
@@ -97,6 +109,10 @@ public class CachedMarketDataService implements MarketDataService {
 
     @Override
     public Optional<RealTimeQuoteDTO> getCachedQuote(String stockCode) {
+        if (!redisEnabled || redisTemplate == null) {
+            return Optional.empty();
+        }
+
         String cacheKey = QUOTE_KEY_PREFIX + stockCode;
 
         try {
@@ -113,6 +129,11 @@ public class CachedMarketDataService implements MarketDataService {
 
     @Override
     public void refreshQuote(String stockCode) {
+        if (!redisEnabled || redisTemplate == null) {
+            log.warn("Redis is disabled, cannot refresh quote cache for {}", stockCode);
+            return;
+        }
+
         String cacheKey = QUOTE_KEY_PREFIX + stockCode;
 
         try {

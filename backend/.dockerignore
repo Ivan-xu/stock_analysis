@@ -1,0 +1,14 @@
+node_modules
+.git
+.gitignore
+*.md
+*.log
+dist
+.DS_Store
+gradle
+gradlew
+gradlew.bat
+build.gradle
+settings.gradle
+init.gradle
+Dockerfile*

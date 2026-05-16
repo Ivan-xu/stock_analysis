@@ -15,6 +15,6 @@ public class ResearcherResult {
     private String stockCode;
     private String stockName;
     private String industry;
-    private List<KLine> kLines;
+    private List<KLineDTO> kLines;
     private RealTimeQuoteDTO realTimeQuote;
 }

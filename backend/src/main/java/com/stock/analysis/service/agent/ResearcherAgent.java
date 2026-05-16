@@ -1,6 +1,5 @@
 package com.stock.analysis.service.agent;
 
-import com.stock.analysis.model.dto.KLine;
 import com.stock.analysis.model.dto.ResearcherResult;
 import com.stock.analysis.model.dto.RealTimeQuoteDTO;
 import com.stock.analysis.service.market.MarketDataService;
@@ -8,15 +7,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
-/**
- * 研究员Agent - 真实行情数据采集
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -43,7 +36,7 @@ public class ResearcherAgent {
         LocalDate endDate = LocalDate.now();
         LocalDate startDate = endDate.minusYears(1);
 
-        List<KLine> kLines = marketDataService.getHistoricalKLine(stockCode, startDate, endDate);
+        var kLines = marketDataService.getHistoricalKLine(stockCode, startDate, endDate);
 
         String stockName = STOCK_NAMES.getOrDefault(stockCode, "未知股票");
         String industry = "未知行业";
@@ -54,24 +47,13 @@ public class ResearcherAgent {
             stockName = quote.getStockName();
         }
 
-        List<KLine> convertedKLines = kLines.stream()
-            .map(dto -> KLine.builder()
-                .date(dto.getDate())
-                .open(BigDecimal.valueOf(dto.getOpen()))
-                .high(BigDecimal.valueOf(dto.getHigh()))
-                .low(BigDecimal.valueOf(dto.getLow()))
-                .close(BigDecimal.valueOf(dto.getClose()))
-                .volume(dto.getVolume())
-                .build())
-            .collect(Collectors.toList());
-
-        log.info("ResearcherAgent: 获取到 {} 条K线数据", convertedKLines.size());
+        log.info("ResearcherAgent: 获取到 {} 条K线数据", kLines.size());
 
         return ResearcherResult.builder()
             .stockCode(stockCode)
             .stockName(stockName)
             .industry(industry)
-            .kLines(convertedKLines)
+            .kLines(kLines)
             .realTimeQuote(quote)
             .build();
     }
@@ -82,7 +64,7 @@ public class ResearcherAgent {
         LocalDate endDate = LocalDate.now();
         LocalDate startDate = endDate.minusYears(1);
 
-        List<KLine> kLines = marketDataService.getHistoricalKLine(stockCode, startDate, endDate);
+        var kLines = marketDataService.getHistoricalKLine(stockCode, startDate, endDate);
 
         String stockName = STOCK_NAMES.getOrDefault(stockCode, "未知股票");
         RealTimeQuoteDTO quote = marketDataService.getCachedQuote(stockCode).orElse(null);
@@ -91,22 +73,11 @@ public class ResearcherAgent {
             stockName = quote.getStockName();
         }
 
-        List<KLine> convertedKLines = kLines.stream()
-            .map(dto -> KLine.builder()
-                .date(dto.getDate())
-                .open(BigDecimal.valueOf(dto.getOpen()))
-                .high(BigDecimal.valueOf(dto.getHigh()))
-                .low(BigDecimal.valueOf(dto.getLow()))
-                .close(BigDecimal.valueOf(dto.getClose()))
-                .volume(dto.getVolume())
-                .build())
-            .collect(Collectors.toList());
-
         return ResearcherResult.builder()
             .stockCode(stockCode)
             .stockName(stockName)
             .industry("未知行业")
-            .kLines(convertedKLines)
+            .kLines(kLines)
             .realTimeQuote(quote)
             .build();
     }

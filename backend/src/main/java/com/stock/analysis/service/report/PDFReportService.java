@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -166,12 +167,16 @@ public class PDFReportService {
             contentStream.endText();
             
             yPos -= 18;
-            for (String news : result.getSentiment().getNews()) {
-                contentStream.beginText();
-                contentStream.newLineAtOffset(60, yPos);
-                contentStream.showText("- " + translateChinese(news));
-                contentStream.endText();
-                yPos -= 18;
+            List<Map<String, String>> newsList = result.getSentiment().getNews();
+            if (newsList != null) {
+                for (Map<String, String> newsItem : newsList) {
+                    String title = newsItem.getOrDefault("title", "No title");
+                    contentStream.beginText();
+                    contentStream.newLineAtOffset(60, yPos);
+                    contentStream.showText("- " + translateChinese(title));
+                    contentStream.endText();
+                    yPos -= 18;
+                }
             }
             
             yPos -= 30;

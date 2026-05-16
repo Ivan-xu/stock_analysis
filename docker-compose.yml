@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  akshare-service:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.python
+    container_name: akshare-service
+    ports:
+      - "5001:5001"
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - stock-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: stock-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - stock-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: stock-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - AKSHARE_BASE_URL=http://akshare-service:5001
+    depends_on:
+      - akshare-service
+      - redis
+    networks:
+      - stock-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: stock-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - stock-network
+    restart: unless-stopped
+
+networks:
+  stock-network:
+    driver: bridge
+
+volumes:
+  redis-data:
