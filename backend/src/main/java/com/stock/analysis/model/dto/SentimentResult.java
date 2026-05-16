@@ -15,4 +15,7 @@ import java.util.Map;
 public class SentimentResult {
     private List<Map<String, String>> news;
     private String overallSentiment;
+    private Integer positiveCount;
+    private Integer negativeCount;
+    private Integer neutralCount;
 }

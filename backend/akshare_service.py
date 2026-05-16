@@ -10,20 +10,20 @@ from datetime import datetime, timedelta
 import random
 from flask_cors import CORS
 import warnings
+import requests
 warnings.filterwarnings('ignore')
 
 app = Flask(__name__)
 CORS(app)
 
-# Mock数据基础价格（模拟真实市场）
 MOCK_BASE_PRICES = {
-    '600519': 1700.0,  # 贵州茅台
-    '000858': 150.0,   # 五粮液
-    '601318': 45.0,    # 中国平安
-    '000001': 12.0,    # 平安银行
-    '600036': 35.0,    # 招商银行
-    '000333': 60.0,    # 美的集团
-    '002594': 250.0,   # 比亚迪
+    '600519': 1700.0,
+    '000858': 150.0,
+    '601318': 45.0,
+    '000001': 12.0,
+    '600036': 35.0,
+    '000333': 60.0,
+    '002594': 250.0,
 }
 
 STOCK_NAMES = {
@@ -39,8 +39,11 @@ STOCK_NAMES = {
     '688981': '中芯国际',
 }
 
+POSITIVE_KEYWORDS = ['涨', '利好', '增长', '盈利', '突破', '创新', '扩张', '合作', '买入', '推荐', '上调', '超预期', '业绩', '订单', '中标']
+NEGATIVE_KEYWORDS = ['跌', '利空', '亏损', '风险', '下调', '预警', '违约', '处罚', '调查', '诉讼', '减持', '预警', '业绩下滑', '风险']
+NEUTRAL_KEYWORDS = ['公告', '会议', '报告', '说明', '进展', '披露', '更正', '问询']
+
 def stock_code_format(stock_code):
-    """格式化股票代码"""
     stock_code = stock_code.strip()
     if stock_code.startswith('6'):
         return f"sh{stock_code}"
@@ -49,8 +52,129 @@ def stock_code_format(stock_code):
     else:
         return stock_code
 
+def analyze_sentiment(text):
+    if not text:
+        return 'neutral'
+    
+    text_lower = text.lower()
+    pos_count = sum(1 for kw in POSITIVE_KEYWORDS if kw in text)
+    neg_count = sum(1 for kw in NEGATIVE_KEYWORDS if kw in text)
+    neu_count = sum(1 for kw in NEUTRAL_KEYWORDS if kw in text)
+    
+    if pos_count > neg_count and pos_count > neu_count:
+        return 'positive'
+    elif neg_count > pos_count:
+        return 'negative'
+    else:
+        return 'neutral'
+
+def generate_mock_news(stock_code):
+    """生成Mock新闻数据"""
+    stock_name = STOCK_NAMES.get(stock_code, '未知股票')
+    
+    news_templates = [
+        {'title': f'{stock_name}发布2024年业绩预告', 'content': f'{stock_name}预计2024年净利润同比增长30%', 'source': '财经网'},
+        {'title': '行业分析师上调评级', 'content': f'多家券商上调{stock_name}目标价至新高', 'source': '证券时报'},
+        {'title': '新产品上市获得市场好评', 'content': f'{stock_name}新产品在市场上反响热烈', 'source': '上海证券报'},
+        {'title': f'{stock_name}发布重要公告', 'content': '公司将于近期召开股东大会', 'source': '公司公告'},
+        {'title': '机构投资者调研', 'content': f'多家机构投资者对{stock_name}进行调研', 'source': '机构调研'},
+    ]
+    
+    news_list = []
+    base_date = datetime.now()
+    
+    for i, template in enumerate(news_templates):
+        news_date = (base_date - timedelta(days=i)).strftime('%Y-%m-%d')
+        sentiment = analyze_sentiment(template['title'] + template['content'])
+        
+        news_list.append({
+            'date': news_date,
+            'title': template['title'],
+            'content': template['content'],
+            'source': template['source'],
+            'sentiment': sentiment
+        })
+    
+    return news_list
+
+def fetch_eastmoney_news(stock_code):
+    """从东方财富获取新闻"""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        
+        url = f'https://np-anotice-stock.eastmoney.com/api/security/ann?sr=-1&page_size=20&page_index=1&ann_type=SHA,CYB,SZA&code={stock_code}'
+        
+        response = requests.get(url, headers=headers, timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            if data.get('data') and data['data'].get('list'):
+                news_list = []
+                for item in data['data']['list'][:10]:
+                    title = item.get('title', '')
+                    content = item.get('notice_content', title)
+                    sentiment = analyze_sentiment(title + content)
+                    
+                    news_list.append({
+                        'date': item.get('publish_time', '')[:10] if item.get('publish_time') else '',
+                        'title': title,
+                        'content': content[:200] if content else '',
+                        'source': '东方财富',
+                        'sentiment': sentiment
+                    })
+                
+                return news_list
+        
+        return None
+        
+    except Exception as e:
+        print(f"东方财富新闻获取失败: {e}")
+        return None
+
+def fetch_netease_news(stock_code):
+    """从网易财经获取新闻"""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        
+        url = f'https://money.163.com/special/00251U62/news_push_callback.py?callback=ntes_search_result_callback&scode={stock_code}&page=1&sortType=1&pageSize=10'
+        
+        response = requests.get(url, headers=headers, timeout=10)
+        
+        if response.status_code == 200:
+            return None
+        
+        return None
+        
+    except Exception as e:
+        print(f"网易财经新闻获取失败: {e}")
+        return None
+
+def fetch_sina_news(stock_code):
+    """从新浪财经获取新闻"""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        
+        url = f'https://vip.stock.finance.sina.com.cn/corp/go.php/vCB_AllBulletin/stockid/{stock_code}.phtml'
+        
+        response = requests.get(url, headers=headers, timeout=10)
+        
+        if response.status_code == 200:
+            return None
+        
+        return None
+        
+    except Exception as e:
+        print(f"新浪财经新闻获取失败: {e}")
+        return None
+
 def generate_mock_klines(stock_code, days=365):
-    """生成Mock K线数据"""
     base_price = MOCK_BASE_PRICES.get(stock_code, 100.0)
     stock_name = STOCK_NAMES.get(stock_code, '未知股票')
 
@@ -60,14 +184,12 @@ def generate_mock_klines(stock_code, days=365):
     for i in range(days, 0, -1):
         date = datetime.now() - timedelta(days=i)
 
-        # 模拟价格波动
         change_percent = random.uniform(-0.03, 0.03)
         open_price = current_price * (1 + random.uniform(-0.02, 0.02))
         close_price = open_price * (1 + change_percent)
         high_price = max(open_price, close_price) * (1 + random.uniform(0, 0.02))
         low_price = min(open_price, close_price) * (1 - random.uniform(0, 0.02))
 
-        # 模拟成交量
         volume = random.randint(1000000, 50000000)
 
         klines.append({
@@ -85,11 +207,9 @@ def generate_mock_klines(stock_code, days=365):
     return klines
 
 def generate_mock_quote(stock_code):
-    """生成Mock实时行情"""
     base_price = MOCK_BASE_PRICES.get(stock_code, 100.0)
     stock_name = STOCK_NAMES.get(stock_code, '未知股票')
 
-    # 模拟价格波动
     change_amount = base_price * random.uniform(-0.05, 0.05)
     current_price = base_price + change_amount
     change_percent = (change_amount / base_price) * 100
@@ -111,19 +231,16 @@ def generate_mock_quote(stock_code):
 
 @app.route('/api/kline/<stock_code>', methods=['GET'])
 def get_kline(stock_code):
-    """获取K线数据"""
     try:
         period = request.args.get('period', 'daily')
         start_date = request.args.get('start', '')
         end_date = request.args.get('end', '')
 
-        # 默认获取近一年的数据
         if not end_date:
             end_date = datetime.now().strftime('%Y%m%d')
         if not start_date:
             start_date = (datetime.now() - timedelta(days=365)).strftime('%Y%m%d')
 
-        # 尝试从AKShare获取真实数据
         symbol = stock_code_format(stock_code)
 
         try:
@@ -150,7 +267,6 @@ def get_kline(stock_code):
             })
 
         except Exception as akshare_error:
-            # AKShare失败时使用Mock数据
             print(f"AKShare failed: {akshare_error}, using mock data")
             mock_klines = generate_mock_klines(stock_code, 365)
 
@@ -169,11 +285,9 @@ def get_kline(stock_code):
 
 @app.route('/api/quote/<stock_code>', methods=['GET'])
 def get_realtime_quote(stock_code):
-    """获取实时行情"""
     try:
         symbol = stock_code_format(stock_code)
 
-        # 尝试从AKShare获取真实数据
         try:
             df = ak.stock_zh_a_spot_em()
             stock_data = df[df['代码'].astype(str) == str(stock_code)]
@@ -203,7 +317,6 @@ def get_realtime_quote(stock_code):
         except Exception as akshare_error:
             print(f"AKShare failed: {akshare_error}, using mock data")
 
-        # 使用Mock数据
         mock_quote = generate_mock_quote(stock_code)
 
         return jsonify({
@@ -218,9 +331,109 @@ def get_realtime_quote(stock_code):
             'error': f'获取行情失败: {str(e)}'
         }), 500
 
+@app.route('/api/news/<stock_code>', methods=['GET'])
+def get_news(stock_code):
+    """获取财经新闻"""
+    try:
+        news_count = int(request.args.get('count', 10))
+        
+        news = fetch_eastmoney_news(stock_code)
+        
+        if not news:
+            print(f"真实新闻获取失败，使用Mock数据")
+            news = generate_mock_news(stock_code)
+            source = 'mock'
+        else:
+            source = 'eastmoney'
+        
+        if len(news) > news_count:
+            news = news[:news_count]
+        
+        return jsonify({
+            'success': True,
+            'data': news,
+            'stockCode': stock_code,
+            'source': source,
+            'count': len(news)
+        })
+
+    except Exception as e:
+        print(f"新闻获取失败: {e}")
+        mock_news = generate_mock_news(stock_code)
+        return jsonify({
+            'success': True,
+            'data': mock_news,
+            'stockCode': stock_code,
+            'source': 'mock',
+            'count': len(mock_news),
+            'error': str(e)
+        })
+
+@app.route('/api/sentiment/<stock_code>', methods=['GET'])
+def get_sentiment(stock_code):
+    """获取情感分析结果"""
+    try:
+        news = fetch_eastmoney_news(stock_code)
+        
+        if not news:
+            print(f"真实新闻获取失败，使用Mock数据")
+            news = generate_mock_news(stock_code)
+            source = 'mock'
+        else:
+            source = 'eastmoney'
+        
+        positive_count = sum(1 for n in news if n['sentiment'] == 'positive')
+        negative_count = sum(1 for n in news if n['sentiment'] == 'negative')
+        neutral_count = sum(1 for n in news if n['sentiment'] == 'neutral')
+        
+        total = len(news)
+        
+        if positive_count > negative_count * 1.5:
+            overall_sentiment = '积极'
+            sentiment_score = 0.6 + (positive_count / total) * 0.4
+        elif negative_count > positive_count * 1.5:
+            overall_sentiment = '消极'
+            sentiment_score = 0.2 + (negative_count / total) * 0.3
+        else:
+            overall_sentiment = '中性'
+            sentiment_score = 0.4 + (positive_count - negative_count) / (total * 2)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'stockCode': stock_code,
+                'overallSentiment': overall_sentiment,
+                'sentimentScore': round(sentiment_score, 2),
+                'positiveCount': positive_count,
+                'negativeCount': negative_count,
+                'neutralCount': neutral_count,
+                'totalNews': total,
+                'news': news[:10]
+            },
+            'source': source
+        })
+
+    except Exception as e:
+        print(f"情感分析失败: {e}")
+        mock_news = generate_mock_news(stock_code)
+        return jsonify({
+            'success': True,
+            'data': {
+                'stockCode': stock_code,
+                'overallSentiment': '中性',
+                'sentimentScore': 0.5,
+                'positiveCount': 2,
+                'negativeCount': 1,
+                'neutralCount': 2,
+                'totalNews': 5,
+                'news': mock_news
+            },
+            'source': 'mock',
+            'error': str(e)
+        })
+
 @app.route('/api/batch-quote', methods=['POST'])
 def get_batch_quote():
-    """批量获取行情"""
     try:
         codes = request.json.get('codes', [])
 
@@ -244,7 +457,6 @@ def get_batch_quote():
 
 @app.route('/api/stock-info/<stock_code>', methods=['GET'])
 def get_stock_info(stock_code):
-    """获取股票基本信息"""
     stock_name = STOCK_NAMES.get(stock_code, '未知股票')
 
     return jsonify({
@@ -262,12 +474,13 @@ def get_stock_info(stock_code):
 
 @app.route('/health', methods=['GET'])
 def health():
-    """健康检查"""
     return jsonify({'status': 'ok'})
 
 if __name__ == '__main__':
     print("启动AKShare数据服务（带Mock数据降级）...")
     print("访问 http://localhost:5001/api/kline/600519 查看贵州茅台K线")
     print("访问 http://localhost:5001/api/quote/600519 查看贵州茅台实时行情")
+    print("访问 http://localhost:5001/api/news/600519 查看贵州茅台新闻")
+    print("访问 http://localhost:5001/api/sentiment/600519 查看情感分析")
     print("注意：当真实数据获取失败时，系统会自动降级到Mock数据")
     app.run(host='0.0.0.0', port=5001, debug=False, threaded=True)
